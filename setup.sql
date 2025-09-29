@@ -47,10 +47,10 @@ RETURNS TRIGGER AS $$
 BEGIN
     IF TG_OP = 'INSERT' THEN
         -- On insert, set timestamps only if token is non-null
-        IF NEW.activate_token IS NOT NULL THEN
-            NEW.activate_token_timestamp := NOW();
+        IF NEW.verify_token IS NOT NULL THEN
+            NEW.verify_token_timestamp := NOW();
         ELSE
-            NEW.activate_token_timestamp := NULL;
+            NEW.verify_token_timestamp := NULL;
         END IF;
 
         IF NEW.reset_password_token IS NOT NULL THEN
@@ -63,8 +63,8 @@ BEGIN
     END IF;
 
     -- On update, bump timestamps iff value actually changed
-    IF NEW.activate_token IS DISTINCT FROM OLD.activate_token THEN
-        NEW.activate_token_timestamp := CASE WHEN NEW.activate_token IS NULL THEN NULL ELSE NOW() END;
+    IF NEW.verify_token IS DISTINCT FROM OLD.verify_token THEN
+        NEW.verify_token_timestamp := CASE WHEN NEW.verify_token IS NULL THEN NULL ELSE NOW() END;
     END IF;
 
     IF NEW.reset_password_token IS DISTINCT FROM OLD.reset_password_token THEN
@@ -95,9 +95,9 @@ CREATE TABLE IF NOT EXISTS users (
 
     -- Auth
     hashed_password           TEXT        NOT NULL, -- allow Argon2/bcrypt variants
-    activated                 BOOLEAN     NOT NULL DEFAULT FALSE,
-    activate_token            TEXT,
-    activate_token_timestamp  TIMESTAMPTZ,
+    verified                 BOOLEAN     NOT NULL DEFAULT FALSE,
+    verify_token            TEXT,
+    verify_token_timestamp  TIMESTAMPTZ,
     reset_password_token      TEXT,
     reset_password_token_timestamp TIMESTAMPTZ,
 
