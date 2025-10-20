@@ -111,6 +111,7 @@ CREATE TABLE IF NOT EXISTS users (
 -- CONVERSATIONS
 CREATE TABLE IF NOT EXISTS conversations (
     convo_id    UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    creator_id  UUID REFERENCES users(user_id) ON DELETE CASCADE,
     created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at  TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     name        VARCHAR(128) NOT NULL
