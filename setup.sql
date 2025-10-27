@@ -89,7 +89,7 @@ CREATE TABLE IF NOT EXISTS users (
     -- Identity
     display_name              VARCHAR(64) NOT NULL,
     username                  CITEXT      NOT NULL,
-    email                     CITEXT      NOT NULL,
+    email                     CITEXT,
 
     profile_pic_url           VARCHAR(512),
 
