@@ -102,6 +102,7 @@ CREATE TABLE IF NOT EXISTS users (
     verify_token_timestamp          TIMESTAMPTZ,
     reset_password_token            TEXT,
     reset_password_token_timestamp  TIMESTAMPTZ,
+    disabled                        BOOLEAN NOT NULL DEFAULT FALSE,
 
     -- Constraints
     CONSTRAINT users_username_uk UNIQUE (username),
