@@ -94,12 +94,14 @@ CREATE TABLE IF NOT EXISTS users (
     profile_pic_url           VARCHAR(512),
 
     -- Auth
-    hashed_password           TEXT        NOT NULL, -- allow Argon2/bcrypt variants
-    verified                 BOOLEAN     NOT NULL DEFAULT FALSE,
-    verify_token            TEXT,
-    verify_token_timestamp  TIMESTAMPTZ,
-    reset_password_token      TEXT,
-    reset_password_token_timestamp TIMESTAMPTZ,
+    hashed_password                 TEXT NOT NULL, -- allow Argon2/bcrypt variants
+    password_changed_at             TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    token_version                   INTEGER NOT NULL DEFAULT 0,
+    verified                        BOOLEAN NOT NULL DEFAULT FALSE,
+    verify_token                    TEXT,
+    verify_token_timestamp          TIMESTAMPTZ,
+    reset_password_token            TEXT,
+    reset_password_token_timestamp  TIMESTAMPTZ,
 
     -- Constraints
     CONSTRAINT users_username_uk UNIQUE (username),
@@ -144,14 +146,16 @@ CREATE TABLE IF NOT EXISTS messages (
     CONSTRAINT messages_content_len_chk CHECK (octet_length(content) <= 4096)
 );
 
--- Optional: Session/socket table instead of embedding socket_id on users
--- Keeps users table purely identity/auth and moves volatile connection data out.
-CREATE TABLE IF NOT EXISTS user_sessions (
-    session_id   UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    user_id      UUID NOT NULL REFERENCES users(user_id) ON DELETE CASCADE,
-    socket_id    TEXT NOT NULL UNIQUE,
-    created_at   TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    last_seen_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+-- SESSIONS
+CREATE TABLE IF NOT EXISTS sessions (
+    id              UUID PRIMARY KEY,
+    user_id         UUID NOT NULL REFERENCES users (user_id) ON DELETE CASCADE,
+    rt_hash         TEXT NOT NULL,              -- store a hash, never the raw token
+    user_agent      TEXT,
+    ip              INET,
+    created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    expires_at      TIMESTAMPTZ NOT NULL,
+    revoked_at      TIMESTAMPTZ
 );
 
 -- ============================================
@@ -164,6 +168,7 @@ CREATE INDEX IF NOT EXISTS idx_messages_sender_id ON messages (sender_id);
 -- Quick lookups
 CREATE INDEX IF NOT EXISTS idx_users_email ON users (email);
 CREATE INDEX IF NOT EXISTS idx_users_username ON users (username);
+CREATE INDEX IF NOT EXISTS idx_sessions_user_id ON sessions (user_id);
 
 -- ============================================
 -- Triggers
