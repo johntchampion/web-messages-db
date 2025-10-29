@@ -149,7 +149,7 @@ CREATE TABLE IF NOT EXISTS messages (
 
 -- SESSIONS
 CREATE TABLE IF NOT EXISTS sessions (
-    id              UUID PRIMARY KEY,
+    session_id      UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     user_id         UUID NOT NULL REFERENCES users (user_id) ON DELETE CASCADE,
     rt_hash         TEXT NOT NULL,              -- store a hash, never the raw token
     user_agent      TEXT,
