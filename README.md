@@ -1,4 +1,4 @@
-# OneTimeChat - Database Config
+# Web Messages - Database Config
 
 The `setup.sql` file contains all of the instructions to set up the PostgreSQL database.
 
