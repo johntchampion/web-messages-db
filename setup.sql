@@ -159,6 +159,15 @@ CREATE TABLE IF NOT EXISTS sessions (
     revoked_at      TIMESTAMPTZ
 );
 
+-- CONVERSATION VISITS (many-to-many: users <-> conversations)
+CREATE TABLE IF NOT EXISTS conversation_visits (
+    user_id     UUID NOT NULL REFERENCES users (user_id) ON DELETE CASCADE,
+    convo_id    UUID NOT NULL REFERENCES conversations (convo_id) ON DELETE CASCADE,
+    visited_at  TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+
+    PRIMARY KEY (user_id, convo_id)
+);
+
 -- ============================================
 -- Indexes for common access patterns
 -- ============================================
@@ -170,6 +179,7 @@ CREATE INDEX IF NOT EXISTS idx_messages_sender_id ON messages (sender_id);
 CREATE INDEX IF NOT EXISTS idx_users_email ON users (email);
 CREATE INDEX IF NOT EXISTS idx_users_username ON users (username);
 CREATE INDEX IF NOT EXISTS idx_sessions_user_id ON sessions (user_id);
+CREATE INDEX IF NOT EXISTS idx_conversation_visits_convo_id ON conversation_visits (convo_id);
 
 -- ============================================
 -- Triggers
