@@ -168,6 +168,17 @@ CREATE TABLE IF NOT EXISTS conversation_visits (
     PRIMARY KEY (user_id, convo_id)
 );
 
+-- PUSH SUBSCRIPTIONS (Web Push API subscriptions per user per device)
+CREATE TABLE IF NOT EXISTS push_subscriptions (
+    subscription_id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    user_id         UUID NOT NULL REFERENCES users(user_id) ON DELETE CASCADE,
+    endpoint        TEXT NOT NULL,
+    p256dh          TEXT NOT NULL,
+    auth            TEXT NOT NULL,
+    created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    CONSTRAINT push_subscriptions_endpoint_uk UNIQUE (endpoint)
+);
+
 -- ============================================
 -- Indexes for common access patterns
 -- ============================================
@@ -180,6 +191,7 @@ CREATE INDEX IF NOT EXISTS idx_users_email ON users (email);
 CREATE INDEX IF NOT EXISTS idx_users_username ON users (username);
 CREATE INDEX IF NOT EXISTS idx_sessions_user_id ON sessions (user_id);
 CREATE INDEX IF NOT EXISTS idx_conversation_visits_convo_id ON conversation_visits (convo_id);
+CREATE INDEX IF NOT EXISTS idx_push_subscriptions_user_id ON push_subscriptions (user_id);
 
 -- ============================================
 -- Triggers
