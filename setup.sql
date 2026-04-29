@@ -12,6 +12,9 @@ BEGIN
     IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'content_type') THEN
         CREATE TYPE content_type AS ENUM ('text', 'image');
     END IF;
+    IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'message_sender_type') THEN
+        CREATE TYPE message_sender_type AS ENUM ('user', 'anonymous', 'system');
+    END IF;
 END$$;
 
 -- ============================================
@@ -111,6 +114,20 @@ CREATE TABLE IF NOT EXISTS users (
     CONSTRAINT users_email_chk    CHECK (position('@' IN email) > 1)
 );
 
+-- SYSTEM AGENTS
+CREATE TABLE IF NOT EXISTS system_agents (
+    agent_id     UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    created_at   TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at   TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+
+    display_name VARCHAR(128) NOT NULL,
+    model_name    VARCHAR(128) NOT NULL,
+    avatar_url   VARCHAR(512),
+
+    CONSTRAINT system_agents_display_name_uk UNIQUE (display_name),
+    CONSTRAINT system_agents_model_name_uk UNIQUE (model_name)
+);
+
 -- CONVERSATIONS
 CREATE TABLE IF NOT EXISTS conversations (
     convo_id    UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
@@ -126,14 +143,16 @@ CREATE TABLE IF NOT EXISTS messages (
     created_at   TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at   TIMESTAMPTZ NOT NULL DEFAULT NOW(),
 
-    convo_id     UUID        NOT NULL,
-    sender_id    UUID,  -- nullable if you want to allow system messages
+    convo_id     UUID NOT NULL,
     type         content_type NOT NULL,
 
-    -- Use TEXT + optional length check instead of VARCHAR(N)
-    content      TEXT        NOT NULL,
-    sender_name  VARCHAR(64),  -- optional denormalized snapshot
+    sender_type   message_sender_type NOT NULL DEFAULT 'user',
+    sender_id     UUID,
+    sender_name   VARCHAR(64),
     sender_avatar VARCHAR(256),
+    agent_id      UUID,
+
+    content      TEXT NOT NULL,
 
     CONSTRAINT messages_convo_fk
         FOREIGN KEY (convo_id) REFERENCES conversations (convo_id)
@@ -142,6 +161,16 @@ CREATE TABLE IF NOT EXISTS messages (
     CONSTRAINT messages_sender_fk
         FOREIGN KEY (sender_id) REFERENCES users (user_id)
         ON DELETE SET NULL,
+
+    CONSTRAINT messages_agent_fk
+        FOREIGN KEY (agent_id) REFERENCES system_agents (agent_id)
+        ON DELETE SET NULL,
+
+    CONSTRAINT messages_sender_type_chk CHECK (
+        (sender_type = 'user'      AND sender_id IS NOT NULL AND agent_id IS NULL) OR
+        (sender_type = 'anonymous' AND sender_id IS NULL     AND agent_id IS NULL) OR
+        (sender_type = 'system'    AND sender_id IS NULL)
+    ),
 
     -- If you want to cap message size, keep this:
     CONSTRAINT messages_content_len_chk CHECK (octet_length(content) <= 4096)
@@ -174,6 +203,7 @@ CREATE TABLE IF NOT EXISTS conversation_visits (
 -- Foreign keys (Postgres doesn't auto-create these)
 CREATE INDEX IF NOT EXISTS idx_messages_convo_id_created_at ON messages (convo_id, created_at);
 CREATE INDEX IF NOT EXISTS idx_messages_sender_id ON messages (sender_id);
+CREATE INDEX IF NOT EXISTS idx_messages_agent_id  ON messages (agent_id);
 
 -- Quick lookups
 CREATE INDEX IF NOT EXISTS idx_users_email ON users (email);
@@ -188,6 +218,11 @@ CREATE INDEX IF NOT EXISTS idx_conversation_visits_convo_id ON conversation_visi
 DROP TRIGGER IF EXISTS trg_users_set_updated_at ON users;
 CREATE TRIGGER trg_users_set_updated_at
 BEFORE UPDATE ON users
+FOR EACH ROW EXECUTE PROCEDURE set_updated_at();
+
+DROP TRIGGER IF EXISTS trg_system_agents_set_updated_at ON system_agents;
+CREATE TRIGGER trg_system_agents_set_updated_at
+BEFORE UPDATE ON system_agents
 FOR EACH ROW EXECUTE PROCEDURE set_updated_at();
 
 DROP TRIGGER IF EXISTS trg_conversations_set_updated_at ON conversations;
